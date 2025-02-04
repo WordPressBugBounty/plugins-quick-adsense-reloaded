@@ -251,9 +251,23 @@ class QUADS_Ad_Setup_Api {
                 return $this->quads_current_user_can();
             }
         ));
+        register_rest_route( 'quads-route', 'list-disabledad-records', array(
+            'methods'    => 'GET',
+            'callback'   => array($this, 'getDisabledAdsList'),
+            'permission_callback' => function(){
+                return $this->quads_current_user_can();
+            }
+        ));
         register_rest_route('quads-route', '/adsell/(?P<id>\d+)/(?P<status>approved|disapproved)', [
             'methods'  => 'POST',
             'callback' => array($this, 'updateAdsellStatus'),
+            'permission_callback' => function() {
+                return $this->quads_current_user_can();
+            }
+        ]);
+        register_rest_route('quads-route', '/disabledads/(?P<id>\d+)/(?P<status>paid|unsubscribe)', [
+            'methods'  => 'POST',
+            'callback' => array($this, 'updateDisableAdStatus'),
             'permission_callback' => function() {
                 return $this->quads_current_user_can();
             }
@@ -275,6 +289,7 @@ class QUADS_Ad_Setup_Api {
     public static function log( $task = 'No task provided' ) {
 
         $message = date_i18n( '[Y-m-d H:i:s]' ) . ' ' . $task . "\n";
+         // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log( $message, 3, WP_CONTENT_DIR . '/Quads-ads-google-api-requests.log' );
     }
     public function reportsAdsenseConfcode() {
@@ -1763,6 +1778,7 @@ return array('status' => 't');
                 }else{
                     $settings = quads_defaultSettings();
                     if($settings['adsTxtEnabled']){
+                        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
                         if (false !== file_put_contents(ABSPATH . 'ads.txt', $parameters[0])) {
                             // show notice that ads.txt has been created
                             set_transient('quads_vi_ads_txt_notice', true, 300);
@@ -1812,6 +1828,7 @@ return array('status' => 't');
         public function getPages($request){
 
             global $wpdb;
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
             $query = "SELECT ID, post_title FROM $wpdb->posts WHERE post_type = 'page' AND post_status = 'publish' ORDER BY post_title ASC LIMIT 0, 100";
             $results = $wpdb->get_results($query, ARRAY_A);
             return $results;
@@ -1900,33 +1917,38 @@ return array('status' => 't');
             $post_type    = 'quads-ads';
             $sort_by      = null;
             $filter_by    = null;
+            $filter_not_by    = null;
 
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
             if(isset($_GET['pageno'])){
                 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
-                $paged    = sanitize_text_field($_GET['pageno']);
+                $paged    = sanitize_text_field( wp_unslash( $_GET['pageno'] ) );
             }
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
             if(isset($_GET['posts_per_page'])){
                 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
-                $rvcount = sanitize_text_field($_GET['posts_per_page']);
+                $rvcount = sanitize_text_field( wp_unslash( $_GET['posts_per_page'] ) );
             }
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
             if(isset($_GET['search_param'])){
                 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
-                $search_param = sanitize_text_field($_GET['search_param']);
+                $search_param = sanitize_text_field( wp_unslash( $_GET['search_param'] ) );
             }
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
             if(isset($_GET['sort_by'])){
                 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
-                $sort_by = sanitize_text_field($_GET['sort_by']);
+                $sort_by = sanitize_text_field( wp_unslash( $_GET['sort_by'] ) );
             }
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
             if(isset($_GET['filter_by'])){
                 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
-                $filter_by = sanitize_text_field($_GET['filter_by']);
+                $filter_by = sanitize_text_field( wp_unslash( $_GET['filter_by'] ) );
             }
-            $result = $this->api_service->getAdDataByParam($post_type, $attr, $rvcount, $paged, $offset, $search_param , $filter_by , $sort_by);
+            if(isset($_GET['filter_not_by'])){
+                // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading the ads list on Ads page.
+                $filter_not_by = sanitize_text_field( wp_unslash( $_GET['filter_not_by'] ) );
+            }
+            $result = $this->api_service->getAdDataByParam($post_type, $attr, $rvcount, $paged, $offset, $search_param , $filter_by , $sort_by, $filter_not_by);
             return $result;
 
         }
@@ -1934,8 +1956,8 @@ return array('status' => 't');
             $default_return =['impressions'=>0,'clicks'=>0];
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading ads analytics.
             if(isset($_GET['ad_id'])){
-                // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reason: We are not processing form information but only loading ads analytics.
-                $ad_id    = sanitize_text_field($_GET['ad_id']);
+                // phpcs:ignore WordPress.Security.NonceVerification.Recommended  -- Reason: We are not processing form information but only loading ads analytics.
+                $ad_id    = sanitize_text_field( wp_unslash( $_GET['ad_id'] ));
                 $ad_analytics= quads_get_ad_stats('sumofstats',$ad_id);
                 return $ad_analytics;
             }
@@ -1980,13 +2002,14 @@ return array('status' => 't');
             $offset = ($page - 1) * $per_page;
         
             // Query the records
+            /* phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared */
             $results = $wpdb->get_results($wpdb->prepare(
                 "SELECT * FROM $table_name WHERE payment_status = %s ORDER BY id DESC LIMIT %d OFFSET %d",
                 'paid',
                 $per_page,
                 $offset
             ));
-
+            /* phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared */
             $total = $wpdb->get_var("SELECT COUNT(*)  FROM $table_name WHERE payment_status = 'paid'");
 
             foreach ($results as $key => $result) {
@@ -1997,7 +2020,71 @@ return array('status' => 't');
         
             return ['records'=>$results,'total'=> $total ];
         } 
+        public function getDisabledAdsList( $request ){
+            
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'quads_disabledad_data'; 
+            $page = (int) $request->get_param('page') ?: 1;
+            $per_page = 10;
+            $offset = ($page - 1) * $per_page;
+        
+            // Query the records
+            /* phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared */
+            $results = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table_name WHERE payment_status in('paid','unsubscribe') ORDER BY disable_ad_id DESC LIMIT %d OFFSET %d",
+                $per_page,
+                $offset
+            ));
+            /* phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared */
+            $total = $wpdb->get_var("SELECT COUNT(*)  FROM $table_name WHERE payment_status in('paid','unsubscribe')");
 
+            $resp = array();
+            foreach ($results as $key => $result) {
+                $disable_duration = $result->disable_duration;
+                $result->start_date = '';
+                $result->end_date = '';
+                $result->color = '#ef3400';
+                if($result->payment_status=='unsubscribe'){
+                    $result->color = '#005aef';
+                }
+
+                if( $result->payment_response !="" ){
+                    $payment_response = json_decode( $result->payment_response, true );
+                    if( isset( $payment_response['payment_date'] ) ){
+                        $payment_date = $payment_response['payment_date'];
+                        $futureDate= date('Y-m-d');
+                        $currentDate= date('Y-m-d');
+                        if( $disable_duration=='yearly' ){
+                            $futureDate=date('Y-m-d', strtotime('+1 year', strtotime($payment_date)) );
+                        }else if( $disable_duration=='monthly' ){
+                            $futureDate=date('Y-m-d', strtotime('+1 month', strtotime($payment_date)) );
+                        }
+                        $result->start_date = date( 'd M Y', strtotime( $payment_date ) );
+                        $result->end_date = date( 'd M Y', strtotime( $futureDate ) );
+                    }
+                }
+                $resp[] = $result;
+            }
+        
+            return ['records'=>$resp,'total'=> $total ];
+        } 
+        public function updateDisableAdStatus($request) {
+            // Retrieve parameters from the request
+            $id = (int) $request['id'];
+            $status = sanitize_text_field($request['status']);
+        
+            $new_status = ($status === 'paid') ? 'unsubscribe' : 'paid';
+    
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'quads_disabledad_data';
+            $status = $wpdb->update(
+                $table_name,
+                ['payment_status' => $new_status],
+                ['disable_ad_id' => $id]
+            );
+            
+            return ['success' => true];
+        }
         public function updateAdsellStatus($request) {
             // Retrieve parameters from the request
             $id = (int) $request['id'];
