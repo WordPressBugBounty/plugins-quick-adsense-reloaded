@@ -144,13 +144,6 @@ class QUADS_Ad_Setup_Api_Service {
               global $wp_roles;
 
               $choices = $wp_roles->get_names();
-             
-
-              if( !is_multisite() ){
-                if(isset($choices['administrator'])){
-                  unset($choices['administrator']);
-                }
-              }
             }else if($condition == 'taxonomy'){
 
               $choices    = array('all' => esc_html__('All','quick-adsense-reloaded'));
@@ -387,7 +380,6 @@ class QUADS_Ad_Setup_Api_Service {
               )
               );
               $arg['meta_query']          = $meta_query_args;
-              $arg['paged']               = 1;
           }else if($filter_not_by){
             $meta_query_args = array(
               array(
@@ -397,7 +389,6 @@ class QUADS_Ad_Setup_Api_Service {
               )
               );
               $arg['meta_query']          = $meta_query_args;
-              $arg['paged']               = 1;
           }
          
         }
