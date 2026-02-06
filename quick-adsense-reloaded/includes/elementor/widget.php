@@ -1,7 +1,9 @@
 <?php
-namespace ElementorQuads;
+namespace quads\elementor;
 
-class Plugin {
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+class QUADS_Elementor_Plugin {
 
 	private static $_instance = null;
 
@@ -21,14 +23,14 @@ class Plugin {
 		$this->include_widgets_files();
 
 		// Register Widgets
-		\Elementor\Plugin::instance()->widgets_manager->register( new Widgets\Quads_Elementor() );
+		\Elementor\Plugin::instance()->widgets_manager->register( new Quads_Elementor() );
 	}
 	public function register_widgets() {
 		// Its is now safe to include Widgets files
 		$this->include_widgets_files();
 
 		// Register Widgets
-		\Elementor\Plugin::instance()->widgets_manager->register_widget_type( new Widgets\Quads_Elementor() );
+		\Elementor\Plugin::instance()->widgets_manager->register_widget_type( new Quads_Elementor() );
 	}
 
 
@@ -43,4 +45,4 @@ class Plugin {
 	}
 }
 
-Plugin::instance();
+QUADS_Elementor_Plugin::instance();

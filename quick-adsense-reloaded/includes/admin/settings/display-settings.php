@@ -186,6 +186,56 @@ function quads_options_page_new() {
         wp_enqueue_style('quads-material-ui-font', 'https://fonts.googleapis.com/icon?family=Material+Icons');
         
         $licenses = get_option( 'quads_wp_quads_pro_license_active' );
+        if (!$licenses) {
+            $quads_settings = get_option('quads_settings');
+            if (isset($quads_settings['quads_wp_quads_pro_license_key']) && !empty($quads_settings['quads_wp_quads_pro_license_key']) && strpos($quads_settings['quads_wp_quads_pro_license_key'], '****************') === false) {
+                // Call API to check license
+                $item_shortname = 'quads_wp_quads_pro';
+                $item_name = 'WP QUADS PRO';
+                $license = sanitize_text_field($quads_settings['quads_wp_quads_pro_license_key']);
+                $api_params = array(
+                    'edd_action' => 'check_license',
+                    'license'    => $license,
+                    'item_name'  => urlencode($item_name),
+                    'url'        => home_url()
+                );
+                $response = wp_remote_post(
+                    'http://wpquads.com/edd-sl-api/',
+                    array(
+                        'timeout'   => 15,
+                        'sslverify' => false,
+                        'body'      => $api_params
+                    )
+                );
+                if (is_wp_error($response)) {
+                    $licenses = (object) array('license' => 'invalid', 'error' => 'connection_error');
+                } else {
+                    $license_data = json_decode(wp_remote_retrieve_body($response));
+                    if ($license_data) {
+                        update_option('quads_wp_quads_pro_license_active', $license_data);
+                        $licenses = $license_data;
+                    } else {
+                        $licenses = (object) array('license' => 'invalid', 'error' => 'invalid_response');
+                    }
+                }
+            } else {
+                $licenses = (object) array(
+                    'license' => 'invalid',
+                    'error' => '',
+                    'expires' => '',
+                    'price_id' => '',
+                    'activations_left' => '',
+                    'checksum' => '',
+                    'customer_email' => '',
+                    'customer_name' => '',
+                    'item_name' => '',
+                    'license_limit' => '',
+                    'payment_id' => '',
+                    'site_count' => '',
+                    'success' => false
+                );
+            }
+        }
         if (isset($licenses->expires)) {
         $license_exp = gmdate('Y-m-d', strtotime($licenses->expires));
         $license_exp_d = gmdate('d F Y', strtotime($licenses->expires));
@@ -242,6 +292,25 @@ function quads_options_page_new() {
         $currency = isset($quads_settings['currency']) ? $quads_settings['currency'] : 'USD';
         $sellable_ads = isset($quads_settings['sellable_ads']) ? $quads_settings['sellable_ads'] : 1;
         $disableads = isset($quads_settings['disableads']) ? $quads_settings['disableads'] : 0;
+        $is_polylang_activated = is_plugin_active('polylang/polylang.php') ? is_plugin_active('polylang/polylang.php') : 0 ;
+        $pll_languages = [];
+
+        // Add active languages added in polylang plugin
+        if ( function_exists( 'pll_languages_list' ) ) {
+            $languages = PLL()->model->get_languages_list();
+            if ( ! empty( $languages ) && is_array( $languages ) ) {
+                foreach ( $languages as $language ) {
+                    if ( is_object( $language ) && ! empty( $language->name ) ) {
+                        $pll_languages[]     =   array(
+                                                    "value" => $language->slug, 
+                                                     "label" => $language->name  
+                                                );
+                    }
+                }
+            }
+
+        }
+
         $data = array(
             'quads_plugin_url'     => QUADS_PLUGIN_URL,
             'rest_url'             => esc_url_raw( rest_url() ),
@@ -258,7 +327,9 @@ function quads_options_page_new() {
             'user_roles'=>quads_get_current_user_roles(),
             'currency' => $currency,
             'sellable_ads' => $sellable_ads,
-            'disableads' => $disableads
+            'disableads' => $disableads,
+            'is_polylang_activated' => $is_polylang_activated,
+            'pll_languages' => $pll_languages,
         );
         $data = apply_filters('quads_localize_filter',$data,'quads_localize_data');
         // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
@@ -371,8 +442,8 @@ function quads_options_page() {
                     </div> 
                     <div style="display: inline-block;width: 242px;">
                     <div class="switch_to_v2">
-                    <h3><?php echo esc_html__('WPQuads 2.0 has the better User interface','quick-adsense-reloaded');?></h3> 
-                    <p><?php echo esc_html__('We have improved the WPQuads and made it better than ever! Step into the future with one-click!','quick-adsense-reloaded');?></p>
+                    <h3><?php echo esc_html__('Quads 2.0 has the better User interface','quick-adsense-reloaded');?></h3> 
+                    <p><?php echo esc_html__('We have improved the Quads and made it better than ever! Step into the future with one-click!','quick-adsense-reloaded');?></p>
                     <div onclick="quads_switch_version('new',this);" class="switch_to_v2_btn"><a  href="#"><?php echo esc_html__('Switch to New Panel','quick-adsense-reloaded');?></a></div>
                     </div>
                     <?php quads_get_advertising(); ?>
@@ -426,7 +497,7 @@ function quads_render_social(){
                         <div class='quads-share-button quads-share-button-twitter' data-share-url="https://wordpress.org/plugins/quick-adsense-reloaded">
                             <div clas='box'>
                                 <a href="https://twitter.com/share?url=https://wordpress.org/plugins/quick-adsense-reloaded&text=Quick%20AdSense%20reloaded%20-%20a%20brand%20new%20fork%20of%20the%20popular%20AdSense%20Plugin%20Quick%20Adsense!" target='_blank'>
-                                    <span class='quads-share'><?php echo esc_html('Tweet','quick-adsense-reloaded'); ?></span>
+                                    <span class='quads-share'><?php echo esc_html__('Tweet', 'quick-adsense-reloaded'); ?></span>
                                 </a>
                             </div>
                         </div>
@@ -434,7 +505,7 @@ function quads_render_social(){
                         <div class="quads-share-button quads-share-button-facebook" data-share-url="https://wordpress.org/plugins/quick-adsense-reloaded">
                             <div class="box">
                                 <a href="https://www.facebook.com/sharer/sharer.php?u=https://wordpress.org/plugins/quick-adsense-reloaded" target="_blank">
-                                    <span class='quads-share'><?php echo esc_html('Share','quick-adsense-reloaded'); ?></span>
+                                    <span class='quads-share'><?php echo esc_html__('Share', 'quick-adsense-reloaded'); ?></span>
                                 </a>
                             </div>
                         </div>

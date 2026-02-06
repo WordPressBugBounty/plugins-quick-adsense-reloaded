@@ -1,4 +1,6 @@
 <?php
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) exit;
 /**
  * Return ad locations HTML based on new API in general settings
  *
@@ -18,7 +20,7 @@ function quads_render_ad_locations( $html ) {
                 'current' => !empty( $location_settings['status'] ) ? $location_settings['status'] : null,
                 'class' => 'quads-checkbox quads-assign'
                     ) );
-            $html .= ' ' . __( 'Assign', 'quick-adsense-reloaded' ) . ' ';
+            $html .= ' ' . esc_html__( 'Assign', 'quick-adsense-reloaded' ) . ' ';
 
             $html .= $quads->html->select( array(
                 'options' => quads_get_ads(),
@@ -56,9 +58,10 @@ function quads_register_ad( $args ) {
         return;
     }
     if ( ! isset( $_quads_registered_ad_locations  ) ) {
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
         $_quads_registered_ad_locations  = array();
     }
-
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
     $_quads_registered_ad_locations [ $args['location'] ] = $args;
 }
 /**

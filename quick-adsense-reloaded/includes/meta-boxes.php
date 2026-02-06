@@ -38,7 +38,7 @@ class Quads_Meta_Box {
 		}
 		add_meta_box(
                 'quads_meta_box',                       // id
-                __('WP QUADS - Hide Ads', 'quick-adsense-reloaded'),     // title
+                esc_html__('WP QUADS - Hide Ads', 'quick-adsense-reloaded'),     // title
                 array($this, 'render_meta_box'),        // render function callback
                 $post_type,                             // post_type
                 'advanced',                               // context
@@ -116,6 +116,7 @@ class Quads_Meta_Box {
         }
         $config = array();
         if( isset( $_POST[ $this->config_key ] ) ){
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized --Reason: Sanitizastion is handled in quads_sanitize_array_recursive function below.
             $config = $this->quads_sanitize_array_recursive( wp_unslash( $_POST[ $this->config_key ] ) );
         }
         $visibility_config = isset($config['visibility']) ? $config['visibility'] : array();
